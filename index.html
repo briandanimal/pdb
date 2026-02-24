@@ -458,7 +458,7 @@
                 }
 
                 document.getElementById('news-list').innerHTML = items
-                    .map((headline) => `<div class="news-item">${headline}</div>`)
+                    .map((headline) => `<div class="news-item">${formatHeadlineForDisplay(headline)}</div>`)
                     .join('');
             } catch (error) {
                 document.getElementById('news-list').innerHTML = `
@@ -467,6 +467,46 @@
                     <div class="news-item">Top stories feed will retry automatically.</div>
                 `;
             }
+        }
+
+        function formatHeadlineForDisplay(headline) {
+            const MAX_CHARS_PER_LINE = 45;
+            const MAX_TOTAL_CHARS = 90;
+            const words = (headline || '').trim().split(/\s+/).filter(Boolean);
+            const lines = ['', ''];
+            let lineIndex = 0;
+
+            for (const word of words) {
+                const truncatedWord = word.slice(0, MAX_CHARS_PER_LINE);
+                const candidate = lines[lineIndex]
+                    ? `${lines[lineIndex]} ${truncatedWord}`
+                    : truncatedWord;
+
+                if (candidate.length <= MAX_CHARS_PER_LINE) {
+                    lines[lineIndex] = candidate;
+                    continue;
+                }
+
+                if (lineIndex === 1) {
+                    break;
+                }
+
+                lineIndex = 1;
+                lines[lineIndex] = truncatedWord;
+            }
+
+            const needsEllipsis = (headline || '').length >= MAX_TOTAL_CHARS;
+
+            if (needsEllipsis) {
+                const secondLine = lines[1] || '';
+                const trimmed = secondLine.slice(0, MAX_CHARS_PER_LINE - 1).trimEnd();
+                lines[1] = `${trimmed}…`;
+            }
+
+            return lines
+                .filter(Boolean)
+                .map((line) => `<span>${line}</span>`)
+                .join('<br>');
         }
 
         function getTodayHiLoEstimate(hourlyPeriods) {
