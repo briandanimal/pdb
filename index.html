@@ -97,6 +97,51 @@
             line-height: 2.2;
         }
 
+        .right-module {
+            position: absolute;
+            top: 250px;
+            right: 80px;
+            width: 700px;
+            color: #ffffff;
+        }
+
+        .info-section {
+            margin-bottom: 48px;
+        }
+
+        .section-title {
+            font-size: 0.95rem;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            color: var(--cyan);
+            margin-bottom: 16px;
+            font-weight: 500;
+        }
+
+        .holiday-list,
+        .news-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .holiday-item,
+        .news-item {
+            border-left: 2px solid rgba(0, 255, 255, 0.55);
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.03);
+            letter-spacing: 0.7px;
+        }
+
+        .news-item {
+            line-height: 1.35;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            min-height: 2.7em;
+        }
+
         .weather-visual {
             position: absolute;
             top: 250px;
@@ -167,7 +212,8 @@
             .greeting,
             .clock-module,
             .weather-visual,
-            .weather-module {
+            .weather-module,
+            .right-module {
                 position: static;
                 transform: none;
                 left: auto;
@@ -196,6 +242,7 @@
                 padding-left: 16px;
                 font-size: clamp(0.5rem, 4.6vw, 0.65rem);
                 line-height: 1.7;
+                margin-bottom: 24px;
             }
 
             .weather-visual {
@@ -214,6 +261,19 @@
 
             .label {
                 margin-right: 12px;
+            }
+
+            .right-module {
+                width: 100%;
+            }
+
+            .section-title {
+                font-size: clamp(0.65rem, 4vw, 0.85rem);
+            }
+
+            .holiday-item,
+            .news-item {
+                font-size: clamp(0.6rem, 4vw, 0.8rem);
             }
         }
         
@@ -244,6 +304,22 @@
 
         <div id="weather" class="weather-module">
             <div class="loading">Initalizing NOAA Feed...</div>
+        </div>
+
+        <div class="right-module">
+            <section class="info-section" aria-live="polite">
+                <div class="section-title">NEXT HOLIDAY:</div>
+                <div id="holiday-list" class="holiday-list">
+                    <div class="holiday-item">Loading holiday calendar...</div>
+                </div>
+            </section>
+
+            <section class="info-section" aria-live="polite">
+                <div class="section-title">TOP U.S. NEWS STORIES:</div>
+                <div id="news-list" class="news-list">
+                    <div class="news-item">Loading top U.S. headlines...</div>
+                </div>
+            </section>
         </div>
     </div>
 
@@ -307,9 +383,90 @@
 
             return new Date(isoString).toLocaleTimeString('en-US', {
                 hour: 'numeric',
-                minute: '2-digit',
                 hour12: true
             });
+        }
+
+        function getNthWeekdayOfMonth(year, monthIndex, weekday, nth) {
+            const firstOfMonth = new Date(year, monthIndex, 1);
+            const dayOffset = (7 + weekday - firstOfMonth.getDay()) % 7;
+            return new Date(year, monthIndex, 1 + dayOffset + ((nth - 1) * 7));
+        }
+
+        function getLastWeekdayOfMonth(year, monthIndex, weekday) {
+            const lastOfMonth = new Date(year, monthIndex + 1, 0);
+            const dayOffset = (7 + lastOfMonth.getDay() - weekday) % 7;
+            return new Date(year, monthIndex + 1, 0 - dayOffset);
+        }
+
+        function buildUsHolidayCalendar(year) {
+            return [
+                { name: "New Year's Day", date: new Date(year, 0, 1) },
+                { name: 'Martin Luther King Jr. Day', date: getNthWeekdayOfMonth(year, 0, 1, 3) },
+                { name: "Valentine's Day", date: new Date(year, 1, 14) },
+                { name: "Presidents' Day", date: getNthWeekdayOfMonth(year, 1, 1, 3) },
+                { name: 'Memorial Day', date: getLastWeekdayOfMonth(year, 4, 1) },
+                { name: 'Juneteenth', date: new Date(year, 5, 19) },
+                { name: 'Independence Day', date: new Date(year, 6, 4) },
+                { name: 'Labor Day', date: getNthWeekdayOfMonth(year, 8, 1, 1) },
+                { name: 'Columbus Day', date: getNthWeekdayOfMonth(year, 9, 1, 2) },
+                { name: 'Veterans Day', date: new Date(year, 10, 11) },
+                { name: 'Thanksgiving Day', date: getNthWeekdayOfMonth(year, 10, 4, 4) },
+                { name: 'Christmas Day', date: new Date(year, 11, 25) }
+            ];
+        }
+
+        function formatHolidayDate(dateObj) {
+            const month = dateObj.toLocaleDateString('en-US', { month: 'short' }).replace('.', '');
+            const day = dateObj.getDate();
+            return `${month}. ${day}${getOrdinalSuffix(day)}`;
+        }
+
+        function renderNextHolidays() {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const thisYear = buildUsHolidayCalendar(today.getFullYear());
+            const nextYear = buildUsHolidayCalendar(today.getFullYear() + 1);
+
+            const upcoming = [...thisYear, ...nextYear]
+                .filter((holiday) => holiday.date >= today)
+                .sort((a, b) => a.date - b.date)
+                .slice(0, 3);
+
+            const holidayMarkup = upcoming.map((holiday) => (
+                `<div class="holiday-item">${formatHolidayDate(holiday.date)} - ${holiday.name}</div>`
+            )).join('');
+
+            document.getElementById('holiday-list').innerHTML = holidayMarkup || '<div class="holiday-item">No holidays found.</div>';
+        }
+
+        async function fetchTopUsNews() {
+            try {
+                const rssSource = encodeURIComponent('https://rss.nytimes.com/services/xml/rss/nyt/US.xml');
+                const proxyUrl = `https://api.allorigins.win/raw?url=${rssSource}`;
+                const newsRes = await fetch(proxyUrl);
+                const rssText = await newsRes.text();
+
+                const xml = new DOMParser().parseFromString(rssText, 'application/xml');
+                const items = [...xml.querySelectorAll('item title')]
+                    .map((titleNode) => titleNode.textContent.trim())
+                    .filter(Boolean)
+                    .slice(0, 3);
+
+                if (!items.length) {
+                    throw new Error('No headlines returned');
+                }
+
+                document.getElementById('news-list').innerHTML = items
+                    .map((headline) => `<div class="news-item">${headline}</div>`)
+                    .join('');
+            } catch (error) {
+                document.getElementById('news-list').innerHTML = `
+                    <div class="news-item">Unable to fetch live headlines at this time.</div>
+                    <div class="news-item">Please check news source connectivity.</div>
+                    <div class="news-item">Top stories feed will retry automatically.</div>
+                `;
+            }
         }
 
         function getTodayHiLoEstimate(hourlyPeriods) {
@@ -464,7 +621,10 @@
             }
         }
         fetchWeather();
+        renderNextHolidays();
+        fetchTopUsNews();
         setInterval(fetchWeather, 600000); // 10 minute refresh
+        setInterval(fetchTopUsNews, 900000); // 15 minute refresh
     </script>
 </body>
 </html>
