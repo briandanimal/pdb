@@ -75,9 +75,9 @@
         }
 
         #time {
-            font-size: 2.75rem;
-            font-weight: bold;
-            color: #ff0000;
+            font-size: 3rem;
+            font-weight: 300;
+            color: #ffffff;
             margin: 0;
             text-shadow: var(--glow);
         }
@@ -198,6 +198,18 @@
             document.getElementById('time').textContent = timeStr;
             document.getElementById('greeting-date').textContent = formattedDate;
         }
+
+        function toCardinalDirection(degrees) {
+            if (degrees === null || degrees === undefined || Number.isNaN(degrees)) {
+                return 'N/A';
+            }
+
+            const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+            const normalizedDegrees = ((degrees % 360) + 360) % 360;
+            const index = Math.round(normalizedDegrees / 45) % 8;
+            return directions[index];
+        }
+
         setInterval(updateClock, 1000);
         updateClock();
 
@@ -216,7 +228,7 @@
 
                 document.getElementById('weather').innerHTML = `
                     <div class="data-row"><span class="label">TEMP:</span> ${((p.temperature.value * 9/5) + 32).toFixed(1)}°F</div>
-                    <div class="data-row"><span class="label">WIND:</span> ${p.windDirection.value}° @ ${(p.windSpeed.value * 2.237).toFixed(1)} MPH</div>
+                    <div class="data-row"><span class="label">WIND:</span> ${toCardinalDirection(p.windDirection.value)} @ ${(p.windSpeed.value * 2.237).toFixed(1)} MPH</div>
                     <div class="data-row"><span class="label">HI/LO:</span> ${today.temperature}° / ${fData.properties.periods[1].temperature}°</div>
                     <div class="data-row"><span class="label">RAIN:</span> ${today.probabilityOfPrecipitation.value || 0}%</div>
                     <div class="data-row"><span class="label">SKY:</span> ${p.textDescription}</div>
