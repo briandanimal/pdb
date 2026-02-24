@@ -12,6 +12,7 @@
             --cyan: #00ffff;
             --glow: 0 0 20px rgba(0, 255, 255, 0.6);
             --safe-space: clamp(16px, 2vw, 40px);
+            --hud-data-top: 360px;
         }
 
         html, body {
@@ -89,7 +90,7 @@
 
         .weather-module {
             position: absolute;
-            top: 360px;
+            top: var(--hud-data-top);
             left: 80px;
             border-left: 3px solid var(--cyan);
             padding-left: 40px;
@@ -99,8 +100,8 @@
 
         .right-module {
             position: absolute;
-            top: 170px;
-            right: 80px;
+            top: var(--hud-data-top);
+            right: 96px;
             width: 420px;
             padding-right: 0;
             box-sizing: border-box;
