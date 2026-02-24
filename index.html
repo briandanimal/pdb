@@ -2,40 +2,70 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mirror HUD</title>
-    <link rel="stylesheet" href="style.css">
+    <title>PDB | HUD v1.0</title>
+    <style>
+        body {
+            background-color: #000;
+            color: #00ffff;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 80px;
+            overflow: hidden;
+            width: 1920px;
+            height: 1080px;
+        }
+        .greeting {
+            text-align: center;
+            font-size: 5rem;
+            font-weight: 100;
+            text-transform: uppercase;
+            letter-spacing: 15px;
+            margin-bottom: 150px;
+            text-shadow: 0 0 30px rgba(0, 255, 255, 0.6);
+        }
+        .weather-box {
+            border-left: 2px solid #00ffff;
+            padding-left: 40px;
+            font-size: 2.2rem;
+            line-height: 2;
+        }
+        .label { color: #fff; font-weight: bold; margin-right: 15px; opacity: 0.8; }
+        .alert { color: #ff3333; animation: blink 2s infinite; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+    </style>
 </head>
 <body>
-    <div class="hud-container">
-        <header>
-            <h1>Good Morning, Brian!</h1>
-        </header>
-        
-        <section class="weather-module" id="weather">
-            <div class="loading">Fetching NOAA Data...</div>
-        </section>
+    <div class="greeting">Good Morning, Brian!</div>
+    <div id="weather" class="weather-box">
+        Loading NOAA Data...
     </div>
 
     <script>
-        async function getQSWeather() {
+        async function fetchWeather() {
             try {
-                // Fetching from KIAD (Dulles)
-                const obsResponse = await fetch('https://api.weather.gov/stations/KIAD/observations/latest');
-                const obsData = await obsResponse.json();
-                const prop = obsData.properties;
+                // KIAD Latest Observation
+                const res = await fetch('https://api.weather.gov/stations/KIAD/observations/latest');
+                const data = await res.json();
+                const p = data.properties;
+                
+                // Forecast for Hi/Lo
+                const fRes = await fetch('https://api.weather.gov/gridpoints/LWX/96,70/forecast');
+                const fData = await fRes.json();
+                const today = fData.properties.periods[0];
 
-                const weatherHTML = `
-                    <div class="weather-row"><span class="label">TEMP:</span> ${((prop.temperature.value * 9/5) + 32).toFixed(1)}°F</div>
-                    <div class="weather-row"><span class="label">WIND:</span> ${prop.windDirection.value}° @ ${(prop.windSpeed.value * 0.621371).toFixed(1)} MPH</div>
-                    <div class="weather-row"><span class="label">CONDITIONS:</span> ${prop.textDescription}</div>
+                document.getElementById('weather').innerHTML = `
+                    <div><span class="label">TEMP:</span> ${((p.temperature.value * 9/5) + 32).toFixed(1)}°F</div>
+                    <div><span class="label">WIND:</span> ${p.windDirection.value}° @ ${(p.windSpeed.value * 0.621371).toFixed(1)} MPH</div>
+                    <div><span class="label">HI/LO:</span> ${today.temperature}°F / ${fData.properties.periods[1].temperature}°F</div>
+                    <div><span class="label">RAIN:</span> ${today.probabilityOfPrecipitation.value || 0}%</div>
+                    <div><span class="label">VIEW:</span> ${p.textDescription}</div>
                 `;
-                document.getElementById('weather').innerHTML = weatherHTML;
             } catch (e) {
-                document.getElementById('weather').innerHTML = "Weather currently unavailable";
+                document.getElementById('weather').innerHTML = "ERROR CONNECTING TO NOAA STATION KIAD";
             }
         }
-        getQSWeather();
+        fetchWeather();
+        setInterval(fetchWeather, 600000); // Update every 10 mins
     </script>
 </body>
 </html>
