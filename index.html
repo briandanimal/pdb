@@ -230,6 +230,54 @@
             return `${direction} @ ${speedMph} MPH`;
         }
 
+        function formatTimeOfDay(isoString) {
+            if (!isoString) {
+                return 'N/A';
+            }
+
+            return new Date(isoString).toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
+
+        function getTodayHiLoEstimate(hourlyPeriods) {
+            const now = new Date();
+            const todayKey = now.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+
+            const todayPeriods = (hourlyPeriods || []).filter((period) => {
+                const periodKey = new Date(period.startTime).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                });
+                return periodKey === todayKey && typeof period.temperature === 'number';
+            });
+
+            if (!todayPeriods.length) {
+                return null;
+            }
+
+            const hiPeriod = todayPeriods.reduce((max, current) => (
+                current.temperature > max.temperature ? current : max
+            ));
+            const loPeriod = todayPeriods.reduce((min, current) => (
+                current.temperature < min.temperature ? current : min
+            ));
+
+            return {
+                hiTemp: hiPeriod.temperature,
+                hiTime: formatTimeOfDay(hiPeriod.startTime),
+                loTemp: loPeriod.temperature,
+                loTime: formatTimeOfDay(loPeriod.startTime)
+            };
+        }
+
         async function getBestObservation() {
             const latestRes = await fetch('https://api.weather.gov/stations/KIAD/observations/latest');
             const latestData = await latestRes.json();
@@ -263,10 +311,18 @@
                 const fData = await fRes.json();
                 const today = fData.properties.periods[0];
 
+                const hRes = await fetch('https://api.weather.gov/gridpoints/LWX/96,70/forecast/hourly');
+                const hData = await hRes.json();
+                const hiLoEstimate = getTodayHiLoEstimate(hData.properties?.periods);
+
+                const hiLoText = hiLoEstimate
+                    ? `${hiLoEstimate.hiTemp}° (${hiLoEstimate.hiTime}) / ${hiLoEstimate.loTemp}° (${hiLoEstimate.loTime})`
+                    : `${today.temperature}° / ${fData.properties.periods[1].temperature}°`;
+
                 document.getElementById('weather').innerHTML = `
                     <div class="data-row"><span class="label">TEMP:</span> ${((p.temperature.value * 9/5) + 32).toFixed(1)}°F</div>
                     <div class="data-row"><span class="label">WIND:</span> ${formatWind(p.windSpeed.value, p.windDirection.value)}</div>
-                    <div class="data-row"><span class="label">HI/LO:</span> ${today.temperature}° / ${fData.properties.periods[1].temperature}°</div>
+                    <div class="data-row"><span class="label">HI/LO:</span> ${hiLoText}</div>
                     <div class="data-row"><span class="label">RAIN:</span> ${today.probabilityOfPrecipitation.value || 0}%</div>
                     <div class="data-row"><span class="label">SKY:</span> ${p.textDescription}</div>
                 `;
