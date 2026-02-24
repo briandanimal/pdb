@@ -102,12 +102,28 @@
             top: 250px;
             left: 80px;
             display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .weather-visual-title {
+            font-size: 0.95rem;
+            color: #ffffff;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            font-weight: 600;
+            opacity: 0.9;
+        }
+
+        .weather-visual-main {
+            display: flex;
             align-items: center;
             gap: 20px;
         }
 
         .weather-icon {
-            font-size: 5rem;
+            font-size: 3.75rem;
             line-height: 1;
             filter: drop-shadow(0 0 14px currentColor);
         }
@@ -185,10 +201,11 @@
             .weather-visual {
                 justify-content: center;
                 margin-bottom: 18px;
+                align-items: center;
             }
 
             .weather-icon {
-                font-size: clamp(2.5rem, 18vw, 3.5rem);
+                font-size: clamp(1.875rem, 13.5vw, 2.625rem);
             }
 
             .weather-visual-text {
@@ -218,8 +235,11 @@
         </div>
 
         <div id="weather-visual" class="weather-visual" aria-live="polite">
-            <span id="weather-icon" class="weather-icon partly-cloudy" role="img" aria-label="Today's weather">⛅</span>
-            <span id="weather-visual-text" class="weather-visual-text">Loading weather graphic...</span>
+            <span class="weather-visual-title">Today's Forecast:</span>
+            <div class="weather-visual-main">
+                <span id="weather-icon" class="weather-icon partly-cloudy" role="img" aria-label="Today's weather">⛅</span>
+                <span id="weather-visual-text" class="weather-visual-text">Loading weather graphic...</span>
+            </div>
         </div>
 
         <div id="weather" class="weather-module">
@@ -328,6 +348,28 @@
             };
         }
 
+        function getEstimatedPrecipArrival(hourlyPeriods) {
+            const now = new Date();
+            const todayKey = now.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+
+            const firstPrecipPeriod = (hourlyPeriods || []).find((period) => {
+                const periodDateKey = new Date(period.startTime).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                });
+
+                const precipChance = period.probabilityOfPrecipitation?.value || 0;
+                return periodDateKey === todayKey && new Date(period.startTime) >= now && precipChance > 0;
+            });
+
+            return firstPrecipPeriod ? formatTimeOfDay(firstPrecipPeriod.startTime) : 'None expected';
+        }
+
         function getWeatherVisual(description) {
             const forecast = (description || '').toLowerCase();
 
@@ -394,6 +436,7 @@
                 const hRes = await fetch('https://api.weather.gov/gridpoints/LWX/96,70/forecast/hourly');
                 const hData = await hRes.json();
                 const hiLoEstimate = getTodayHiLoEstimate(hData.properties?.periods);
+                const precipArrival = getEstimatedPrecipArrival(hData.properties?.periods);
 
                 const hiLoText = hiLoEstimate
                     ? `${hiLoEstimate.hiTemp}° (${hiLoEstimate.hiTime}) / ${hiLoEstimate.loTemp}° (${hiLoEstimate.loTime})`
@@ -411,7 +454,8 @@
                     <div class="data-row"><span class="label">TEMP:</span> ${((p.temperature.value * 9/5) + 32).toFixed(1)}°F</div>
                     <div class="data-row"><span class="label">WIND:</span> ${formatWind(p.windSpeed.value, p.windDirection.value)}</div>
                     <div class="data-row"><span class="label">HI/LO:</span> ${hiLoText}</div>
-                    <div class="data-row"><span class="label">RAIN:</span> ${today.probabilityOfPrecipitation.value || 0}%</div>
+                    <div class="data-row"><span class="label">PRECIP:</span> ${today.probabilityOfPrecipitation.value || 0}%</div>
+                    <div class="data-row"><span class="label">EST. ARRIVAL:</span> ${precipArrival}</div>
                     <div class="data-row"><span class="label">SKY:</span> ${p.textDescription}</div>
                 `;
             } catch (e) {
