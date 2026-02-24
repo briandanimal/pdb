@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mirror HUD</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="hud-container">
+        <header>
+            <h1>Good Morning, Brian!</h1>
+        </header>
+        
+        <section class="weather-module" id="weather">
+            <div class="loading">Fetching NOAA Data...</div>
+        </section>
+    </div>
+
+    <script>
+        async function getQSWeather() {
+            try {
+                // Fetching from KIAD (Dulles)
+                const obsResponse = await fetch('https://api.weather.gov/stations/KIAD/observations/latest');
+                const obsData = await obsResponse.json();
+                const prop = obsData.properties;
+
+                const weatherHTML = `
+                    <div class="weather-row"><span class="label">TEMP:</span> ${((prop.temperature.value * 9/5) + 32).toFixed(1)}°F</div>
+                    <div class="weather-row"><span class="label">WIND:</span> ${prop.windDirection.value}° @ ${(prop.windSpeed.value * 0.621371).toFixed(1)} MPH</div>
+                    <div class="weather-row"><span class="label">CONDITIONS:</span> ${prop.textDescription}</div>
+                `;
+                document.getElementById('weather').innerHTML = weatherHTML;
+            } catch (e) {
+                document.getElementById('weather').innerHTML = "Weather currently unavailable";
+            }
+        }
+        getQSWeather();
+    </script>
+</body>
+</html>
