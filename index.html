@@ -2,70 +2,155 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>PDB | HUD v1.0</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDB | PRO-SUMER HUD</title>
     <style>
-        body {
-            background-color: #000;
-            color: #00ffff;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 80px;
-            overflow: hidden;
-            width: 1920px;
-            height: 1080px;
+        /* 1. SCALE ENGINE - Keeps the 42" layout but fits your laptop screen */
+        :root {
+            --hud-width: 1920px;
+            --hud-height: 1080px;
+            --cyan: #00ffff;
+            --glow: 0 0 20px rgba(0, 255, 255, 0.6);
         }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            color: var(--cyan);
+        }
+
+        .hud-canvas {
+            width: var(--hud-width);
+            height: var(--hud-height);
+            background-color: #000;
+            position: relative;
+            flex-shrink: 0;
+            transform-origin: center;
+            border: 1px solid rgba(0, 255, 255, 0.1); /* Subtle boundary */
+        }
+
+        /* Auto-scale for laptop viewing */
+        @media screen and (max-width: 1919px), screen and (max-height: 1079px) {
+            .hud-canvas {
+                transform: scale(min(calc(100vw / 1920), calc(100vh / 1080)));
+            }
+        }
+
+        /* 2. LAYOUT ELEMENTS */
         .greeting {
-            text-align: center;
-            font-size: 5rem;
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 4rem;
             font-weight: 100;
             text-transform: uppercase;
-            letter-spacing: 15px;
-            margin-bottom: 150px;
-            text-shadow: 0 0 30px rgba(0, 255, 255, 0.6);
+            letter-spacing: 12px;
+            text-shadow: var(--glow);
         }
-        .weather-box {
-            border-left: 2px solid #00ffff;
+
+        .clock-module {
+            position: absolute;
+            top: 60px;
+            right: 80px;
+            text-align: right;
+        }
+
+        #time {
+            font-size: 5.5rem;
+            font-weight: bold;
+            margin: 0;
+            text-shadow: var(--glow);
+        }
+
+        #date {
+            font-size: 1.8rem;
+            color: #fff;
+            opacity: 0.7;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        .weather-module {
+            position: absolute;
+            top: 250px;
+            left: 80px;
+            border-left: 3px solid var(--cyan);
             padding-left: 40px;
             font-size: 2.2rem;
-            line-height: 2;
+            line-height: 2.2;
         }
-        .label { color: #fff; font-weight: bold; margin-right: 15px; opacity: 0.8; }
-        .alert { color: #ff3333; animation: blink 2s infinite; }
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
+        .label { color: #fff; font-weight: bold; margin-right: 20px; opacity: 0.6; }
+        .data-row { margin-bottom: 10px; }
+        
+        /* Alerts blink for visibility behind mirror glass */
+        .alert { color: #ff3333; animation: blink 1.5s infinite; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.2; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
-    <div class="greeting">Good Morning, Brian!</div>
-    <div id="weather" class="weather-box">
-        Loading NOAA Data...
+
+    <div class="hud-canvas">
+        <div class="greeting">Good Morning, Brian</div>
+
+        <div class="clock-module">
+            <p id="time">00:00:00</p>
+            <p id="date">Loading Date...</p>
+        </div>
+
+        <div id="weather" class="weather-module">
+            <div class="loading">Initalizing NOAA Feed...</div>
+        </div>
     </div>
 
     <script>
+        // CLOCK LOGIC
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+            
+            document.getElementById('time').textContent = timeStr;
+            document.getElementById('date').textContent = dateStr;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // WEATHER LOGIC (NOAA KIAD)
         async function fetchWeather() {
             try {
-                // KIAD Latest Observation
-                const res = await fetch('https://api.weather.gov/stations/KIAD/observations/latest');
-                const data = await res.json();
-                const p = data.properties;
+                // Latest Observation
+                const obsRes = await fetch('https://api.weather.gov/stations/KIAD/observations/latest');
+                const obsData = await obsRes.json();
+                const p = obsData.properties;
                 
-                // Forecast for Hi/Lo
+                // Forecast (for Hi/Lo and Rain)
                 const fRes = await fetch('https://api.weather.gov/gridpoints/LWX/96,70/forecast');
                 const fData = await fRes.json();
                 const today = fData.properties.periods[0];
 
                 document.getElementById('weather').innerHTML = `
-                    <div><span class="label">TEMP:</span> ${((p.temperature.value * 9/5) + 32).toFixed(1)}°F</div>
-                    <div><span class="label">WIND:</span> ${p.windDirection.value}° @ ${(p.windSpeed.value * 0.621371).toFixed(1)} MPH</div>
-                    <div><span class="label">HI/LO:</span> ${today.temperature}°F / ${fData.properties.periods[1].temperature}°F</div>
-                    <div><span class="label">RAIN:</span> ${today.probabilityOfPrecipitation.value || 0}%</div>
-                    <div><span class="label">VIEW:</span> ${p.textDescription}</div>
+                    <div class="data-row"><span class="label">TEMP:</span> ${((p.temperature.value * 9/5) + 32).toFixed(1)}°F</div>
+                    <div class="data-row"><span class="label">WIND:</span> ${p.windDirection.value}° @ ${(p.windSpeed.value * 2.237).toFixed(1)} MPH</div>
+                    <div class="data-row"><span class="label">HI/LO:</span> ${today.temperature}° / ${fData.properties.periods[1].temperature}°</div>
+                    <div class="data-row"><span class="label">RAIN:</span> ${today.probabilityOfPrecipitation.value || 0}%</div>
+                    <div class="data-row"><span class="label">SKY:</span> ${p.textDescription}</div>
                 `;
             } catch (e) {
-                document.getElementById('weather').innerHTML = "ERROR CONNECTING TO NOAA STATION KIAD";
+                document.getElementById('weather').innerHTML = "SIGNAL LOST: CHECK NOAA API STATUS";
             }
         }
         fetchWeather();
-        setInterval(fetchWeather, 600000); // Update every 10 mins
+        setInterval(fetchWeather, 600000); // 10 minute refresh
     </script>
 </body>
 </html>
