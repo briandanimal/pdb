@@ -75,14 +75,6 @@
             text-shadow: var(--glow);
         }
 
-        #date {
-            font-size: 0.9rem;
-            color: #fff;
-            opacity: 0.7;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-        }
-
         .weather-module {
             position: absolute;
             top: 250px;
@@ -139,11 +131,6 @@
                 font-size: clamp(1.1rem, 12vw, 1.7rem);
             }
 
-            #date {
-                font-size: clamp(0.475rem, 4vw, 0.6rem);
-                letter-spacing: clamp(1px, 0.6vw, 3px);
-            }
-
             .weather-module {
                 border-left-width: 2px;
                 padding-left: 16px;
@@ -164,11 +151,10 @@
 <body>
 
     <div class="hud-canvas">
-        <div class="greeting">Good Morning, Brian</div>
+        <div id="greeting" class="greeting">Today is --</div>
 
         <div class="clock-module">
             <p id="time">00:00:00</p>
-            <p id="date">Loading Date...</p>
         </div>
 
         <div id="weather" class="weather-module">
@@ -178,13 +164,29 @@
 
     <script>
         // CLOCK LOGIC
+        function getOrdinalSuffix(day) {
+            if (day >= 11 && day <= 13) {
+                return 'th';
+            }
+
+            switch (day % 10) {
+                case 1: return 'st';
+                case 2: return 'nd';
+                case 3: return 'rd';
+                default: return 'th';
+            }
+        }
+
         function updateClock() {
             const now = new Date();
             const timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+            const weekday = now.toLocaleDateString('en-US', { weekday: 'long' });
+            const month = now.toLocaleDateString('en-US', { month: 'long' });
+            const day = now.getDate();
+            const formattedDate = `${weekday}, ${month} ${day}${getOrdinalSuffix(day)}`;
             
             document.getElementById('time').textContent = timeStr;
-            document.getElementById('date').textContent = dateStr;
+            document.getElementById('greeting').textContent = `Today is ${formattedDate}`;
         }
         setInterval(updateClock, 1000);
         updateClock();
