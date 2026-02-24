@@ -104,44 +104,44 @@
             display: flex;
             flex-direction: column;
             align-items: flex-start;
-            gap: 10px;
+            gap: 12px;
         }
 
         .weather-visual-title {
-            font-size: 0.95rem;
+            font-size: 0.85rem;
             color: #ffffff;
-            letter-spacing: 3px;
+            letter-spacing: 2.5px;
             text-transform: uppercase;
-            font-weight: 600;
-            opacity: 0.9;
+            font-weight: 500;
+            opacity: 0.95;
         }
 
         .weather-visual-main {
             display: flex;
             align-items: center;
-            gap: 20px;
+            gap: 16px;
+            padding: 10px 14px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.03);
         }
 
         .weather-icon {
-            font-size: 3.75rem;
+            font-size: 3rem;
             line-height: 1;
-            filter: drop-shadow(0 0 14px currentColor);
+            font-family: 'Segoe UI Symbol', 'Noto Sans Symbols', sans-serif;
+            color: #ffffff;
+            font-weight: 300;
+            min-width: 54px;
+            text-align: center;
         }
 
-        .weather-icon.sunny { color: #ffd84d; }
-        .weather-icon.partly-cloudy { color: #a9dcff; }
-        .weather-icon.cloudy { color: #c4d0dc; }
-        .weather-icon.rain { color: #7cc9ff; }
-        .weather-icon.storm { color: #f6a3ff; }
-        .weather-icon.snow { color: #ecf7ff; }
-        .weather-icon.fog { color: #d1d8e0; }
-
         .weather-visual-text {
-            font-size: 1rem;
+            font-size: 0.9rem;
             color: #ffffff;
-            letter-spacing: 2px;
+            letter-spacing: 1.5px;
             text-transform: uppercase;
-            opacity: 0.85;
+            opacity: 0.78;
         }
 
         .label { color: #fff; font-weight: bold; margin-right: 20px; opacity: 0.6; }
@@ -205,7 +205,7 @@
             }
 
             .weather-icon {
-                font-size: clamp(1.875rem, 13.5vw, 2.625rem);
+                font-size: clamp(1.5rem, 11vw, 2rem);
             }
 
             .weather-visual-text {
@@ -374,30 +374,30 @@
             const forecast = (description || '').toLowerCase();
 
             if (forecast.includes('thunder')) {
-                return { icon: '⛈️', label: 'Storms expected', className: 'storm' };
+                return { icon: '⚡︎', label: 'Storms expected', className: 'storm' };
             }
 
             if (forecast.includes('snow') || forecast.includes('sleet') || forecast.includes('flurr')) {
-                return { icon: '🌨️', label: 'Snow possible', className: 'snow' };
+                return { icon: '❄︎', label: 'Snow possible', className: 'snow' };
             }
 
             if (forecast.includes('rain') || forecast.includes('showers') || forecast.includes('drizzle')) {
-                return { icon: '🌧️', label: 'Rain possible', className: 'rain' };
+                return { icon: '☂︎', label: 'Rain possible', className: 'rain' };
             }
 
             if (forecast.includes('fog') || forecast.includes('haze') || forecast.includes('smoke')) {
-                return { icon: '🌫️', label: 'Low visibility', className: 'fog' };
+                return { icon: '≋', label: 'Low visibility', className: 'fog' };
             }
 
             if (forecast.includes('cloud')) {
                 if (forecast.includes('partly') || forecast.includes('mostly sunny') || forecast.includes('mostly clear')) {
-                    return { icon: '⛅', label: 'Partly cloudy', className: 'partly-cloudy' };
+                    return { icon: '◔', label: 'Partly cloudy', className: 'partly-cloudy' };
                 }
 
-                return { icon: '☁️', label: 'Cloudy skies', className: 'cloudy' };
+                return { icon: '☁︎', label: 'Cloudy skies', className: 'cloudy' };
             }
 
-            return { icon: '☀️', label: 'Sunny / clear', className: 'sunny' };
+            return { icon: '○', label: 'Sunny / clear', className: 'sunny' };
         }
 
         async function getBestObservation() {
