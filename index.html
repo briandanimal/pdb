@@ -67,6 +67,11 @@
             display: block;
         }
 
+        .greeting-date {
+            color: #ffffff;
+            font-weight: 400;
+        }
+
         .clock-module {
             position: absolute;
             top: 60px;
@@ -164,7 +169,7 @@
         </div>
 
         <div class="clock-module">
-            <p id="time">00:00:00</p>
+            <p id="time">00:00 AM</p>
         </div>
 
         <div id="weather" class="weather-module">
@@ -189,7 +194,7 @@
 
         function updateClock() {
             const now = new Date();
-            const timeStr = now.toLocaleTimeString('en-US', { hour12: true, hour: 'numeric', minute: '2-digit', second: '2-digit' });
+            const timeStr = now.toLocaleTimeString('en-US', { hour12: true, hour: 'numeric', minute: '2-digit' });
             const weekday = now.toLocaleDateString('en-US', { weekday: 'long' });
             const month = now.toLocaleDateString('en-US', { month: 'long' });
             const day = now.getDate();
@@ -210,6 +215,40 @@
             return directions[index];
         }
 
+        function formatWind(speedKph, directionDeg) {
+            if (speedKph === null || speedKph === undefined || Number.isNaN(speedKph)) {
+                return 'N/A';
+            }
+
+            const speedMph = (speedKph * 0.621371).toFixed(1);
+            const direction = toCardinalDirection(directionDeg);
+
+            if (direction === 'N/A') {
+                return `${speedMph} MPH`;
+            }
+
+            return `${direction} @ ${speedMph} MPH`;
+        }
+
+        async function getBestObservation() {
+            const latestRes = await fetch('https://api.weather.gov/stations/KIAD/observations/latest');
+            const latestData = await latestRes.json();
+            const latestProps = latestData.properties;
+
+            const hasWindData = latestProps?.windSpeed?.value !== null && latestProps?.windDirection?.value !== null;
+            if (hasWindData) {
+                return latestProps;
+            }
+
+            const recentRes = await fetch('https://api.weather.gov/stations/KIAD/observations?limit=20');
+            const recentData = await recentRes.json();
+            const recentWithWind = (recentData.features || [])
+                .map((feature) => feature.properties)
+                .find((obs) => obs?.windSpeed?.value !== null && obs?.windDirection?.value !== null);
+
+            return recentWithWind || latestProps;
+        }
+
         setInterval(updateClock, 1000);
         updateClock();
 
@@ -217,9 +256,7 @@
         async function fetchWeather() {
             try {
                 // Latest Observation
-                const obsRes = await fetch('https://api.weather.gov/stations/KIAD/observations/latest');
-                const obsData = await obsRes.json();
-                const p = obsData.properties;
+                const p = await getBestObservation();
                 
                 // Forecast (for Hi/Lo and Rain)
                 const fRes = await fetch('https://api.weather.gov/gridpoints/LWX/96,70/forecast');
@@ -228,7 +265,7 @@
 
                 document.getElementById('weather').innerHTML = `
                     <div class="data-row"><span class="label">TEMP:</span> ${((p.temperature.value * 9/5) + 32).toFixed(1)}°F</div>
-                    <div class="data-row"><span class="label">WIND:</span> ${toCardinalDirection(p.windDirection.value)} @ ${(p.windSpeed.value * 2.237).toFixed(1)} MPH</div>
+                    <div class="data-row"><span class="label">WIND:</span> ${formatWind(p.windSpeed.value, p.windDirection.value)}</div>
                     <div class="data-row"><span class="label">HI/LO:</span> ${today.temperature}° / ${fData.properties.periods[1].temperature}°</div>
                     <div class="data-row"><span class="label">RAIN:</span> ${today.probabilityOfPrecipitation.value || 0}%</div>
                     <div class="data-row"><span class="label">SKY:</span> ${p.textDescription}</div>
