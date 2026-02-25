@@ -12,7 +12,8 @@
             --cyan: #00ffff;
             --glow: 0 0 20px rgba(0, 255, 255, 0.6);
             --safe-space: clamp(16px, 2vw, 40px);
-            --hud-data-top: 360px;
+            --left-data-top: 320px;
+            --section-gap: 36px;
         }
 
         html, body {
@@ -88,27 +89,37 @@
             text-shadow: var(--glow);
         }
 
-        .weather-module {
+        .left-data-stack {
             position: absolute;
-            top: var(--hud-data-top);
+            top: var(--left-data-top);
             left: 80px;
+            width: 760px;
+            display: flex;
+            flex-direction: column;
+            gap: var(--section-gap);
+        }
+
+        .weather-module {
+            position: static;
             padding-left: 0;
             font-size: 1.1rem;
             line-height: 2.2;
         }
 
         .right-module {
-            position: absolute;
-            top: calc(var(--hud-data-top) + 340px);
-            left: 80px;
-            width: 760px;
+            position: static;
+            width: 100%;
             padding-left: 0;
             box-sizing: border-box;
             color: #ffffff;
         }
 
         .info-section {
-            margin-bottom: 28px;
+            margin-bottom: var(--section-gap);
+        }
+
+        .info-section:last-child {
+            margin-bottom: 0;
         }
 
         .section-title {
@@ -224,6 +235,7 @@
             .greeting,
             .clock-module,
             .weather-visual,
+            .left-data-stack,
             .weather-module,
             .right-module {
                 position: static;
@@ -253,7 +265,11 @@
                 padding-left: 0;
                 font-size: clamp(0.5rem, 4.6vw, 0.65rem);
                 line-height: 1.7;
-                margin-bottom: 24px;
+            }
+
+            .left-data-stack {
+                width: 100%;
+                gap: 24px;
             }
 
             .weather-visual {
@@ -321,25 +337,27 @@
             </div>
         </div>
 
-        <div id="weather" class="weather-module">
-            <div class="section-title weather-data-title">Today's Forecast:</div>
-            <div class="loading">Initalizing NOAA Feed...</div>
-        </div>
+        <div class="left-data-stack">
+            <div id="weather" class="weather-module">
+                <div class="section-title weather-data-title">Today's Forecast:</div>
+                <div class="loading">Initalizing NOAA Feed...</div>
+            </div>
 
-        <div class="right-module">
-            <section class="info-section" aria-live="polite">
-                <div class="section-title">NEXT HOLIDAY:</div>
-                <div id="holiday-list" class="holiday-list">
-                    <div class="holiday-item">Loading holiday calendar...</div>
-                </div>
-            </section>
+            <div class="right-module">
+                <section class="info-section" aria-live="polite">
+                    <div class="section-title">NEXT HOLIDAY:</div>
+                    <div id="holiday-list" class="holiday-list">
+                        <div class="holiday-item">Loading holiday calendar...</div>
+                    </div>
+                </section>
 
-            <section class="info-section" aria-live="polite">
-                <div class="section-title">TOP U.S. NEWS STORIES:</div>
-                <div id="news-list" class="news-list">
-                    <div class="news-item">Loading top U.S. headlines...</div>
-                </div>
-            </section>
+                <section class="info-section" aria-live="polite">
+                    <div class="section-title">TOP U.S. NEWS STORIES:</div>
+                    <div id="news-list" class="news-list">
+                        <div class="news-item">Loading top U.S. headlines...</div>
+                    </div>
+                </section>
+            </div>
         </div>
     </div>
 
