@@ -389,10 +389,65 @@
          * - This ZIP is used to determine locale context (time zone/date display)
          *   and weather location parameters.
          * - Example: '20166' (Dulles, VA)
+         *
+         * CLOCK_24_HOUR:
+         * - false: Display 12-hour clock with AM/PM.
+         * - true: Display 24-hour clock.
+         *
+         * WEATHER_REFRESH_MINUTES / NEWS_REFRESH_MINUTES:
+         * - Controls auto-refresh cadence for weather/news modules.
+         * - Must be positive numbers.
+         *
+         * NEWS_HEADLINE_LIMIT:
+         * - Max number of headlines shown from the U.S. feed.
+         * - Must be a positive integer.
+         *
+         * SHOW_HOLIDAYS:
+         * - true: Render next U.S. holidays card.
+         * - false: Hide holiday card.
          */
         const USER_CONFIG = {
-            US_ZIP_CODE: '20166'
+            US_ZIP_CODE: '20166',
+            CLOCK_24_HOUR: false,
+            WEATHER_REFRESH_MINUTES: 10,
+            NEWS_REFRESH_MINUTES: 15,
+            NEWS_HEADLINE_LIMIT: 3,
+            SHOW_HOLIDAYS: true
             // Add future user-editable settings here.
+        };
+
+        const DEFAULT_CONFIG = {
+            CLOCK_24_HOUR: false,
+            WEATHER_REFRESH_MINUTES: 10,
+            NEWS_REFRESH_MINUTES: 15,
+            NEWS_HEADLINE_LIMIT: 3,
+            SHOW_HOLIDAYS: true
+        };
+
+        function getPositiveNumberConfig(key) {
+            const rawValue = Number(USER_CONFIG[key]);
+            if (!Number.isFinite(rawValue) || rawValue <= 0) {
+                return DEFAULT_CONFIG[key];
+            }
+
+            return rawValue;
+        }
+
+        function getPositiveIntegerConfig(key) {
+            const rawValue = Number(USER_CONFIG[key]);
+            if (!Number.isInteger(rawValue) || rawValue <= 0) {
+                return DEFAULT_CONFIG[key];
+            }
+
+            return rawValue;
+        }
+
+        const APP_CONFIG = {
+            clock24Hour: Boolean(USER_CONFIG.CLOCK_24_HOUR),
+            weatherRefreshMs: getPositiveNumberConfig('WEATHER_REFRESH_MINUTES') * 60 * 1000,
+            newsRefreshMs: getPositiveNumberConfig('NEWS_REFRESH_MINUTES') * 60 * 1000,
+            newsHeadlineLimit: getPositiveIntegerConfig('NEWS_HEADLINE_LIMIT'),
+            showHolidays: USER_CONFIG.SHOW_HOLIDAYS ?? DEFAULT_CONFIG.SHOW_HOLIDAYS
         };
 
         const DASHBOARD_CONTEXT = {
@@ -422,7 +477,7 @@
             const localeOptions = DASHBOARD_CONTEXT.timeZone ? { timeZone: DASHBOARD_CONTEXT.timeZone } : {};
             const timeStr = now.toLocaleTimeString('en-US', {
                 ...localeOptions,
-                hour12: true,
+                hour12: !APP_CONFIG.clock24Hour,
                 hour: 'numeric',
                 minute: '2-digit'
             });
@@ -536,7 +591,7 @@
                 const items = [...xml.querySelectorAll('item title')]
                     .map((titleNode) => titleNode.textContent.trim())
                     .filter(Boolean)
-                    .slice(0, 3);
+                    .slice(0, APP_CONFIG.newsHeadlineLimit);
 
                 if (!items.length) {
                     throw new Error('No headlines returned');
@@ -813,15 +868,22 @@
                 // Fall back to default context when ZIP configuration lookup is unavailable.
             }
 
+            const holidaySection = document.getElementById('holiday-list')?.closest('section');
+            if (holidaySection) {
+                holidaySection.style.display = APP_CONFIG.showHolidays ? '' : 'none';
+            }
+
             updateClock();
             fetchWeather();
-            renderNextHolidays();
+            if (APP_CONFIG.showHolidays) {
+                renderNextHolidays();
+            }
             fetchTopUsNews();
         }
 
         initializeDashboard();
-        setInterval(fetchWeather, 600000); // 10 minute refresh
-        setInterval(fetchTopUsNews, 900000); // 15 minute refresh
+        setInterval(fetchWeather, APP_CONFIG.weatherRefreshMs);
+        setInterval(fetchTopUsNews, APP_CONFIG.newsRefreshMs);
     </script>
 </body>
 </html>
