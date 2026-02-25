@@ -153,8 +153,8 @@
             gap: 8px;
         }
 
-        .weather-visual-title {
-            margin-bottom: 0;
+        .weather-data-title {
+            margin-bottom: 12px;
         }
 
         .weather-visual-main {
@@ -264,6 +264,10 @@
                 font-size: clamp(0.55rem, 4vw, 0.8rem);
             }
 
+            .weather-data-title {
+                margin-bottom: 10px;
+            }
+
             .label {
                 margin-right: 12px;
             }
@@ -307,7 +311,6 @@
         </div>
 
         <div id="weather-visual" class="weather-visual" aria-live="polite">
-            <span class="weather-visual-title section-title">Today's Forecast:</span>
             <div class="weather-visual-main">
                 <span id="weather-icon" class="weather-icon partly-cloudy" role="img" aria-label="Today's weather"></span>
                 <span id="weather-visual-text" class="weather-visual-text">Loading weather graphic...</span>
@@ -315,6 +318,7 @@
         </div>
 
         <div id="weather" class="weather-module">
+            <div class="section-title weather-data-title">Today's Forecast:</div>
             <div class="loading">Initalizing NOAA Feed...</div>
         </div>
 
@@ -661,6 +665,7 @@
                 visualTextEl.textContent = skyDescription;
 
                 document.getElementById('weather').innerHTML = `
+                    <div class="section-title weather-data-title">Today's Forecast:</div>
                     <div class="data-row"><span class="label">TEMP:</span> ${((p.temperature.value * 9/5) + 32).toFixed(1)}°F</div>
                     <div class="data-row"><span class="label">WIND:</span> ${formatWind(p.windSpeed.value, p.windDirection.value)}</div>
                     <div class="data-row"><span class="label">HI/LO:</span> ${hiLoText}</div>
@@ -669,7 +674,10 @@
                 `;
             } catch (e) {
                 document.getElementById('weather-visual-text').textContent = 'Weather graphic unavailable';
-                document.getElementById('weather').innerHTML = "SIGNAL LOST: CHECK NOAA API STATUS";
+                document.getElementById('weather').innerHTML = `
+                    <div class="section-title weather-data-title">Today's Forecast:</div>
+                    SIGNAL LOST: CHECK NOAA API STATUS
+                `;
             }
         }
         fetchWeather();
