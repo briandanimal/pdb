@@ -174,6 +174,15 @@
             gap: 16px;
         }
 
+        .weather-location {
+            font-size: 1.5rem;
+            font-weight: 500;
+            color: var(--cyan);
+            letter-spacing: 0.8px;
+            text-shadow: var(--glow);
+            text-align: left;
+        }
+
         .weather-icon {
             width: 5.4rem;
             height: 5.4rem;
@@ -284,6 +293,10 @@
                 font-size: clamp(0.7rem, 6vw, 1rem);
             }
 
+            .weather-location {
+                font-size: clamp(0.525rem, 4.5vw, 0.75rem);
+            }
+
             .weather-data-title {
                 margin-bottom: 10px;
             }
@@ -335,6 +348,7 @@
                 <span id="weather-icon" class="weather-icon partly-cloudy" role="img" aria-label="Today's weather"></span>
                 <span id="weather-visual-text" class="weather-visual-text">Loading weather graphic...</span>
             </div>
+            <div id="weather-location" class="weather-location">(Loading location...)</div>
         </div>
 
         <div class="left-data-stack">
@@ -660,6 +674,24 @@
         // WEATHER LOGIC (NOAA KIAD)
         async function fetchWeather() {
             try {
+                const stationRes = await fetch('https://api.weather.gov/stations/KIAD');
+                const stationData = await stationRes.json();
+                const [stationLon, stationLat] = stationData.geometry?.coordinates || [];
+
+                let locationText = '(Dulles, VA)';
+                if (typeof stationLat === 'number' && typeof stationLon === 'number') {
+                    const pointsRes = await fetch(`https://api.weather.gov/points/${stationLat},${stationLon}`);
+                    const pointsData = await pointsRes.json();
+                    const relativeLocation = pointsData.properties?.relativeLocation?.properties;
+                    const city = relativeLocation?.city;
+                    const state = relativeLocation?.state;
+
+                    if (city && state) {
+                        locationText = `(${city}, ${state})`;
+                    }
+                }
+                document.getElementById('weather-location').textContent = locationText;
+
                 // Latest Observation
                 const p = await getBestObservation();
                 
@@ -696,6 +728,7 @@
                 `;
             } catch (e) {
                 document.getElementById('weather-visual-text').textContent = 'Weather graphic unavailable';
+                document.getElementById('weather-location').textContent = '(Dulles, VA)';
                 document.getElementById('weather').innerHTML = `
                     <div class="section-title weather-data-title">Today's Forecast:</div>
                     SIGNAL LOST: CHECK NOAA API STATUS
