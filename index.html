@@ -378,6 +378,31 @@
     </div>
 
     <script>
+        /*
+         * =========================
+         * USER CONFIGURATION AREA
+         * =========================
+         * Edit the values in this section to quickly customize this page.
+         *
+         * US_ZIP_CODE:
+         * - Enter a 5-digit U.S. ZIP Code.
+         * - This ZIP is used to determine locale context (time zone/date display)
+         *   and weather location parameters.
+         * - Example: '20166' (Dulles, VA)
+         */
+        const USER_CONFIG = {
+            US_ZIP_CODE: '20166'
+            // Add future user-editable settings here.
+        };
+
+        const DASHBOARD_CONTEXT = {
+            stationId: 'KIAD',
+            forecastUrl: 'https://api.weather.gov/gridpoints/LWX/96,70/forecast',
+            forecastHourlyUrl: 'https://api.weather.gov/gridpoints/LWX/96,70/forecast/hourly',
+            locationLabel: 'Dulles, VA',
+            timeZone: undefined
+        };
+
         // CLOCK LOGIC
         function getOrdinalSuffix(day) {
             if (day >= 11 && day <= 13) {
@@ -394,9 +419,15 @@
 
         function updateClock() {
             const now = new Date();
-            const timeStr = now.toLocaleTimeString('en-US', { hour12: true, hour: 'numeric', minute: '2-digit' });
-            const weekday = now.toLocaleDateString('en-US', { weekday: 'long' });
-            const month = now.toLocaleDateString('en-US', { month: 'long' });
+            const localeOptions = DASHBOARD_CONTEXT.timeZone ? { timeZone: DASHBOARD_CONTEXT.timeZone } : {};
+            const timeStr = now.toLocaleTimeString('en-US', {
+                ...localeOptions,
+                hour12: true,
+                hour: 'numeric',
+                minute: '2-digit'
+            });
+            const weekday = now.toLocaleDateString('en-US', { ...localeOptions, weekday: 'long' });
+            const month = now.toLocaleDateString('en-US', { ...localeOptions, month: 'long' });
             const day = now.getDate();
             const formattedDate = `${weekday}, ${month} ${day}${getOrdinalSuffix(day)}`;
             
@@ -651,8 +682,8 @@
             return { icon: '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="10"/><path d="M32 8v8m0 32v8M8 32h8m32 0h8m-41-17 6 6m22 22 6 6M15 49l6-6m22-22 6-6"/></svg>', className: 'sunny' };
         }
 
-        async function getBestObservation() {
-            const latestRes = await fetch('https://api.weather.gov/stations/KIAD/observations/latest');
+        async function getBestObservation(stationId) {
+            const latestRes = await fetch(`https://api.weather.gov/stations/${stationId}/observations/latest`);
             const latestData = await latestRes.json();
             const latestProps = latestData.properties;
 
@@ -661,7 +692,7 @@
                 return latestProps;
             }
 
-            const recentRes = await fetch('https://api.weather.gov/stations/KIAD/observations?limit=20');
+            const recentRes = await fetch(`https://api.weather.gov/stations/${stationId}/observations?limit=20`);
             const recentData = await recentRes.json();
             const recentWithWind = (recentData.features || [])
                 .map((feature) => feature.properties)
@@ -670,39 +701,76 @@
             return recentWithWind || latestProps;
         }
 
-        setInterval(updateClock, 1000);
-        updateClock();
+        async function configureDashboardFromZip() {
+            const zip = (USER_CONFIG.US_ZIP_CODE || '').trim();
+            if (!/^\d{5}$/.test(zip)) {
+                return;
+            }
 
-        // WEATHER LOGIC (NOAA KIAD)
+            const geocodeRes = await fetch(`https://nominatim.openstreetmap.org/search?country=us&postalcode=${zip}&format=jsonv2&limit=1`);
+            const geocodeData = await geocodeRes.json();
+            const match = geocodeData[0];
+
+            if (!match) {
+                return;
+            }
+
+            const lat = Number(match.lat);
+            const lon = Number(match.lon);
+            if (Number.isNaN(lat) || Number.isNaN(lon)) {
+                return;
+            }
+
+            const pointsRes = await fetch(`https://api.weather.gov/points/${lat},${lon}`);
+            const pointsData = await pointsRes.json();
+            const properties = pointsData.properties || {};
+            const relativeLocation = properties.relativeLocation?.properties || {};
+            const city = relativeLocation.city;
+            const state = relativeLocation.state;
+
+            if (properties.forecast) {
+                DASHBOARD_CONTEXT.forecastUrl = properties.forecast;
+            }
+
+            if (properties.forecastHourly) {
+                DASHBOARD_CONTEXT.forecastHourlyUrl = properties.forecastHourly;
+            }
+
+            if (properties.timeZone) {
+                DASHBOARD_CONTEXT.timeZone = properties.timeZone;
+            }
+
+            if (city && state) {
+                DASHBOARD_CONTEXT.locationLabel = `${city}, ${state}`;
+            }
+
+            if (properties.observationStations) {
+                const stationsRes = await fetch(properties.observationStations);
+                const stationsData = await stationsRes.json();
+                const stationId = stationsData.features?.[0]?.properties?.stationIdentifier;
+
+                if (stationId) {
+                    DASHBOARD_CONTEXT.stationId = stationId;
+                }
+            }
+        }
+
+        setInterval(updateClock, 1000);
+
+        // WEATHER LOGIC
         async function fetchWeather() {
             try {
-                const stationRes = await fetch('https://api.weather.gov/stations/KIAD');
-                const stationData = await stationRes.json();
-                const [stationLon, stationLat] = stationData.geometry?.coordinates || [];
-
-                let locationText = 'Dulles, VA';
-                if (typeof stationLat === 'number' && typeof stationLon === 'number') {
-                    const pointsRes = await fetch(`https://api.weather.gov/points/${stationLat},${stationLon}`);
-                    const pointsData = await pointsRes.json();
-                    const relativeLocation = pointsData.properties?.relativeLocation?.properties;
-                    const city = relativeLocation?.city;
-                    const state = relativeLocation?.state;
-
-                    if (city && state) {
-                        locationText = `${city}, ${state}`;
-                    }
-                }
-                document.getElementById('weather-location').textContent = locationText;
+                document.getElementById('weather-location').textContent = DASHBOARD_CONTEXT.locationLabel;
 
                 // Latest Observation
-                const p = await getBestObservation();
+                const p = await getBestObservation(DASHBOARD_CONTEXT.stationId);
                 
                 // Forecast (for Hi/Lo and Rain)
-                const fRes = await fetch('https://api.weather.gov/gridpoints/LWX/96,70/forecast');
+                const fRes = await fetch(DASHBOARD_CONTEXT.forecastUrl);
                 const fData = await fRes.json();
                 const today = fData.properties.periods[0];
 
-                const hRes = await fetch('https://api.weather.gov/gridpoints/LWX/96,70/forecast/hourly');
+                const hRes = await fetch(DASHBOARD_CONTEXT.forecastHourlyUrl);
                 const hData = await hRes.json();
                 const hiLoEstimate = getTodayHiLoEstimate(hData.properties?.periods);
                 const precipArrival = getEstimatedPrecipArrival(hData.properties?.periods);
@@ -730,16 +798,28 @@
                 `;
             } catch (e) {
                 document.getElementById('weather-visual-text').textContent = 'Weather graphic unavailable';
-                document.getElementById('weather-location').textContent = 'Dulles, VA';
+                document.getElementById('weather-location').textContent = DASHBOARD_CONTEXT.locationLabel;
                 document.getElementById('weather').innerHTML = `
                     <div class="section-title weather-data-title">Today's Forecast:</div>
                     SIGNAL LOST: CHECK NOAA API STATUS
                 `;
             }
         }
-        fetchWeather();
-        renderNextHolidays();
-        fetchTopUsNews();
+
+        async function initializeDashboard() {
+            try {
+                await configureDashboardFromZip();
+            } catch (error) {
+                // Fall back to default context when ZIP configuration lookup is unavailable.
+            }
+
+            updateClock();
+            fetchWeather();
+            renderNextHolidays();
+            fetchTopUsNews();
+        }
+
+        initializeDashboard();
         setInterval(fetchWeather, 600000); // 10 minute refresh
         setInterval(fetchTopUsNews, 900000); // 15 minute refresh
     </script>
