@@ -4,6 +4,85 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDB | PRO-SUMER HUD</title>
+    <script>
+        /*
+         * =========================
+         * USER CONFIGURATION AREA
+         * =========================
+         * Edit values in this block for quick customization.
+         *
+         * 1) DISPLAY_NAME:
+         * - Personalized greeting shown over the date.
+         *
+         * 2) TIME_FORMAT_24H:
+         * - true = 24-hour clock, false = 12-hour clock.
+         *
+         * 3) LOCALE:
+         * - Locale used for date/time formatting (example: 'en-US').
+         *
+         * 4) UNITS:
+         * - 'imperial' (°F, MPH) or 'metric' (°C, KPH).
+         *
+         * 5) WEATHER_REFRESH_MINUTES:
+         * - Weather refresh cadence in minutes.
+         *
+         * 6) NEWS_REFRESH_MINUTES:
+         * - News refresh cadence in minutes.
+         *
+         * 7) WEATHER_ENABLED:
+         * - true to show weather modules, false to hide.
+         *
+         * 8) NEWS_ENABLED:
+         * - true to show news section, false to hide.
+         *
+         * 9) NEWS_FEED_URL:
+         * - RSS feed URL used for headlines.
+         *
+         * 10) NEWS_MAX_ITEMS:
+         * - Maximum headlines displayed.
+         *
+         * 11) HOLIDAYS_ENABLED:
+         * - true to show holiday section, false to hide.
+         *
+         * 12) HOLIDAY_CALENDAR_MODE:
+         * - 'us-federal' for U.S. federal holiday list.
+         *
+         * Existing ZIP setting:
+         * US_ZIP_CODE (5-digit U.S. ZIP) for timezone/weather locale context.
+         *
+         * ZIP_LOOKUP_ENABLED:
+         * - true to resolve ZIP dynamically; false to use fallback defaults.
+         *
+         * FALLBACK_LOCATION_LABEL:
+         * - Location label used when ZIP lookup is disabled/unavailable.
+         */
+        const USER_CONFIG = {
+            DISPLAY_NAME: 'Sir',
+            TIME_FORMAT_24H: false,
+            LOCALE: 'en-US',
+            UNITS: 'imperial',
+            WEATHER_REFRESH_MINUTES: 10,
+            NEWS_REFRESH_MINUTES: 15,
+            WEATHER_ENABLED: true,
+            NEWS_ENABLED: true,
+            NEWS_FEED_URL: 'https://rss.nytimes.com/services/xml/rss/nyt/US.xml',
+            NEWS_MAX_ITEMS: 3,
+            HOLIDAYS_ENABLED: true,
+            HOLIDAY_CALENDAR_MODE: 'us-federal',
+            US_ZIP_CODE: '20152',
+            ZIP_LOOKUP_ENABLED: true,
+            FALLBACK_LOCATION_LABEL: 'Dulles, VA'
+            // Add future user-editable settings here.
+        };
+
+        const DASHBOARD_CONTEXT = {
+            stationId: 'KIAD',
+            forecastUrl: 'https://api.weather.gov/gridpoints/LWX/96,70/forecast',
+            forecastHourlyUrl: 'https://api.weather.gov/gridpoints/LWX/96,70/forecast/hourly',
+            locationLabel: USER_CONFIG.FALLBACK_LOCATION_LABEL || 'Dulles, VA',
+            timeZone: undefined
+        };
+    </script>
     <style>
         /* 1. SCALE ENGINE - Keeps the 42" layout but fits your laptop screen */
         :root {
@@ -360,15 +439,15 @@
             </div>
 
             <div class="right-module">
-                <section class="info-section" aria-live="polite">
-                    <div class="section-title">NEXT HOLIDAY:</div>
+                <section id="holiday-section" class="info-section" aria-live="polite">
+                    <div id="holiday-title" class="section-title">NEXT HOLIDAY:</div>
                     <div id="holiday-list" class="holiday-list">
                         <div class="holiday-item">Loading holiday calendar...</div>
                     </div>
                 </section>
 
-                <section class="info-section" aria-live="polite">
-                    <div class="section-title">TOP U.S. NEWS STORIES:</div>
+                <section id="news-section" class="info-section" aria-live="polite">
+                    <div id="news-title" class="section-title">TOP U.S. NEWS STORIES:</div>
                     <div id="news-list" class="news-list">
                         <div class="news-item">Loading top U.S. headlines...</div>
                     </div>
@@ -378,30 +457,6 @@
     </div>
 
     <script>
-        /*
-         * =========================
-         * USER CONFIGURATION AREA
-         * =========================
-         * Edit the values in this section to quickly customize this page.
-         *
-         * US_ZIP_CODE:
-         * - Enter a 5-digit U.S. ZIP Code.
-         * - This ZIP is used to determine locale context (time zone/date display)
-         *   and weather location parameters.
-         * - Example: '20166' (Dulles, VA)
-         */
-        const USER_CONFIG = {
-            US_ZIP_CODE: '20152'
-            // Add future user-editable settings here.
-        };
-
-        const DASHBOARD_CONTEXT = {
-            stationId: 'KIAD',
-            forecastUrl: 'https://api.weather.gov/gridpoints/LWX/96,70/forecast',
-            forecastHourlyUrl: 'https://api.weather.gov/gridpoints/LWX/96,70/forecast/hourly',
-            locationLabel: 'Dulles, VA',
-            timeZone: undefined
-        };
 
         // CLOCK LOGIC
         function getOrdinalSuffix(day) {
@@ -419,19 +474,22 @@
 
         function updateClock() {
             const now = new Date();
+            const locale = USER_CONFIG.LOCALE || 'en-US';
             const localeOptions = DASHBOARD_CONTEXT.timeZone ? { timeZone: DASHBOARD_CONTEXT.timeZone } : {};
-            const timeStr = now.toLocaleTimeString('en-US', {
+            const hour12 = !USER_CONFIG.TIME_FORMAT_24H;
+            const timeStr = now.toLocaleTimeString(locale, {
                 ...localeOptions,
-                hour12: true,
+                hour12,
                 hour: 'numeric',
                 minute: '2-digit'
             });
-            const weekday = now.toLocaleDateString('en-US', { ...localeOptions, weekday: 'long' });
-            const month = now.toLocaleDateString('en-US', { ...localeOptions, month: 'long' });
-            const day = now.getDate();
+            const day = Number(now.toLocaleDateString('en-US', { ...localeOptions, day: 'numeric' }));
+            const weekday = now.toLocaleDateString(locale, { ...localeOptions, weekday: 'long' });
+            const month = now.toLocaleDateString(locale, { ...localeOptions, month: 'long' });
             const formattedDate = `${weekday}, ${month} ${day}${getOrdinalSuffix(day)}`;
             
             document.getElementById('time').textContent = timeStr;
+            document.querySelector('.greeting-label').textContent = `${USER_CONFIG.DISPLAY_NAME}'s Date:`;
             document.getElementById('greeting-date').textContent = formattedDate;
         }
 
@@ -451,8 +509,13 @@
                 return 'N/A';
             }
 
-            const speedMph = (speedKph * 0.621371).toFixed(1);
             const direction = toCardinalDirection(directionDeg);
+            if (USER_CONFIG.UNITS === 'metric') {
+                const speedMetric = speedKph.toFixed(1);
+                return direction === 'N/A' ? `${speedMetric} KPH` : `${direction} @ ${speedMetric} KPH`;
+            }
+
+            const speedMph = (speedKph * 0.621371).toFixed(1);
 
             if (direction === 'N/A') {
                 return `${speedMph} MPH`;
@@ -466,9 +529,9 @@
                 return 'N/A';
             }
 
-            return new Date(isoString).toLocaleTimeString('en-US', {
+            return new Date(isoString).toLocaleTimeString(USER_CONFIG.LOCALE || 'en-US', {
                 hour: 'numeric',
-                hour12: true
+                hour12: !USER_CONFIG.TIME_FORMAT_24H
             });
         }
 
@@ -485,6 +548,10 @@
         }
 
         function buildUsHolidayCalendar(year) {
+            if (USER_CONFIG.HOLIDAY_CALENDAR_MODE !== 'us-federal') {
+                return [];
+            }
+
             return [
                 { name: "New Year's Day", date: new Date(year, 0, 1) },
                 { name: 'Martin Luther King Jr. Day', date: getNthWeekdayOfMonth(year, 0, 1, 3) },
@@ -502,7 +569,7 @@
         }
 
         function formatHolidayDate(dateObj) {
-            const month = dateObj.toLocaleDateString('en-US', { month: 'short' }).replace('.', '');
+            const month = dateObj.toLocaleDateString(USER_CONFIG.LOCALE || 'en-US', { month: 'short' }).replace('.', '');
             const day = dateObj.getDate();
             return `${month}. ${day}${getOrdinalSuffix(day)}`;
         }
@@ -527,7 +594,7 @@
 
         async function fetchTopUsNews() {
             try {
-                const rssSource = encodeURIComponent('https://rss.nytimes.com/services/xml/rss/nyt/US.xml');
+                const rssSource = encodeURIComponent(USER_CONFIG.NEWS_FEED_URL);
                 const proxyUrl = `https://api.allorigins.win/raw?url=${rssSource}`;
                 const newsRes = await fetch(proxyUrl);
                 const rssText = await newsRes.text();
@@ -536,7 +603,7 @@
                 const items = [...xml.querySelectorAll('item title')]
                     .map((titleNode) => titleNode.textContent.trim())
                     .filter(Boolean)
-                    .slice(0, 3);
+                    .slice(0, Math.max(1, Number(USER_CONFIG.NEWS_MAX_ITEMS) || 3));
 
                 if (!items.length) {
                     throw new Error('No headlines returned');
@@ -702,6 +769,10 @@
         }
 
         async function configureDashboardFromZip() {
+            if (!USER_CONFIG.ZIP_LOOKUP_ENABLED) {
+                return;
+            }
+
             const zip = (USER_CONFIG.US_ZIP_CODE || '').trim();
             if (!/^\d{5}$/.test(zip)) {
                 return;
@@ -788,9 +859,16 @@
                 iconEl.setAttribute('aria-label', skyDescription);
                 visualTextEl.textContent = skyDescription;
 
+                const tempC = p.temperature?.value;
+                const tempText = Number.isFinite(tempC)
+                    ? (USER_CONFIG.UNITS === 'metric'
+                        ? `${tempC.toFixed(1)}°C`
+                        : `${((tempC * 9 / 5) + 32).toFixed(1)}°F`)
+                    : 'N/A';
+
                 document.getElementById('weather').innerHTML = `
                     <div class="section-title weather-data-title">Today's Forecast:</div>
-                    <div class="data-row"><span class="label">TEMP:</span> ${((p.temperature.value * 9/5) + 32).toFixed(1)}°F</div>
+                    <div class="data-row"><span class="label">TEMP:</span> ${tempText}</div>
                     <div class="data-row"><span class="label">WIND:</span> ${formatWind(p.windSpeed.value, p.windDirection.value)}</div>
                     <div class="data-row"><span class="label">HI/LO:</span> ${hiLoText}</div>
                     <div class="data-row"><span class="label">PRECIP:</span> ${today.probabilityOfPrecipitation.value || 0}%</div>
@@ -806,6 +884,30 @@
             }
         }
 
+        function applyConfiguredHeadingsAndVisibility() {
+            const greetingLabel = document.querySelector('.greeting-label');
+            if (greetingLabel) {
+                greetingLabel.textContent = `${USER_CONFIG.DISPLAY_NAME}'s Date:`;
+            }
+
+            const weatherVisualEl = document.getElementById('weather-visual');
+            const weatherModuleEl = document.getElementById('weather');
+            if (!USER_CONFIG.WEATHER_ENABLED) {
+                if (weatherVisualEl) weatherVisualEl.style.display = 'none';
+                if (weatherModuleEl) weatherModuleEl.style.display = 'none';
+            }
+
+            const holidaySection = document.getElementById('holiday-section');
+            if (!USER_CONFIG.HOLIDAYS_ENABLED && holidaySection) {
+                holidaySection.style.display = 'none';
+            }
+
+            const newsSection = document.getElementById('news-section');
+            if (!USER_CONFIG.NEWS_ENABLED && newsSection) {
+                newsSection.style.display = 'none';
+            }
+        }
+
         async function initializeDashboard() {
             try {
                 await configureDashboardFromZip();
@@ -813,15 +915,31 @@
                 // Fall back to default context when ZIP configuration lookup is unavailable.
             }
 
+            applyConfiguredHeadingsAndVisibility();
             updateClock();
-            fetchWeather();
-            renderNextHolidays();
-            fetchTopUsNews();
+
+            if (USER_CONFIG.WEATHER_ENABLED) {
+                fetchWeather();
+            }
+
+            if (USER_CONFIG.HOLIDAYS_ENABLED) {
+                renderNextHolidays();
+            }
+
+            if (USER_CONFIG.NEWS_ENABLED) {
+                fetchTopUsNews();
+            }
         }
 
         initializeDashboard();
-        setInterval(fetchWeather, 600000); // 10 minute refresh
-        setInterval(fetchTopUsNews, 900000); // 15 minute refresh
+
+        if (USER_CONFIG.WEATHER_ENABLED) {
+            setInterval(fetchWeather, Math.max(1, Number(USER_CONFIG.WEATHER_REFRESH_MINUTES) || 10) * 60 * 1000);
+        }
+
+        if (USER_CONFIG.NEWS_ENABLED) {
+            setInterval(fetchTopUsNews, Math.max(1, Number(USER_CONFIG.NEWS_REFRESH_MINUTES) || 15) * 60 * 1000);
+        }
     </script>
 </body>
 </html>
